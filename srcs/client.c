@@ -25,7 +25,7 @@ typedef struct {
     char name[256];           // 파일 이름
 } FileInfo;
 
-void debug_log(const char *format, ...) {
+static void debug_log(const char *format, ...) {
     FILE *log_file = fopen("debug.log", "a"); // 디버깅 로그 파일 열기
     if (!log_file) return;
 
@@ -134,6 +134,8 @@ int client(int read_fd, int write_fd) {
     int file_count = 0, highlight = 0;
     int ch;
     FileInfo *files = NULL;
+    char copy_buffer[MAX_PATH] = "";
+    char link_target[MAX_PATH] = "";
 
     // ncurses 초기화
     initscr();
@@ -144,7 +146,7 @@ int client(int read_fd, int write_fd) {
     // 창 크기 설정
     int menu_width = COLS / 2;  // 왼쪽 창 너비 (화면의 절반)
     int info_width = COLS - menu_width; // 오른쪽 창 너비
-    int height = LINES - 4;     // 상단 두 창의 높이 (아래 단축키 설명 공간 제외)
+    int height = LINES - 8;     // 상단 두 창의 높이 (아래 단축키 설명 공간 제외)
 
     // 메뉴 창 생성
     WINDOW *menu_win = newwin(height, menu_width, 1, 0);
@@ -159,10 +161,13 @@ int client(int read_fd, int write_fd) {
     wrefresh(info_win);
 
     // 도움말 창 생성
-    WINDOW *help_win = newwin(3, COLS, LINES - 3, 0); // 높이 3, 화면 하단 고정
+    WINDOW *help_win = newwin(7, COLS, LINES - 7, 0); // 높이 3, 화면 하단 고정
     box(help_win, 0, 0);
     mvwprintw(help_win, 0, 1, " Help ");
-    mvwprintw(help_win, 1, 1, "UP/DOWN: Navigate   ENTER: Select   Q: Quit");
+    mvwprintw(help_win, 1, 1, "UP/DOWN: Navigate   ENTER: Select folder   Q: Quit");
+    mvwprintw(help_win, 2, 1, "M: Change mode   D: Delete   R: Rename");
+    mvwprintw(help_win, 3, 1, "C: Copy   P: Paste   N: New folder");
+    mvwprintw(help_win, 4, 1, "L: Link target   S: Symbolic link   H: Hard link");
     wrefresh(help_win);
 
     keypad(menu_win, TRUE);
@@ -210,6 +215,346 @@ int client(int read_fd, int write_fd) {
                 }
             }
                 break;
+            case 'm': // 권한 수정
+            {
+                if (files[highlight].permissions[0] != 'd') { // 디렉토리가 아니면 수정 가능
+                    char new_permissions[4]; // 예: 755
+                    echo(); // 사용자 입력 허용
+                    mvwprintw(info_win, 10, 1, "Enter new permissions (e.g., 755): ");
+                    wrefresh(info_win);
+                    wgetnstr(info_win, new_permissions, sizeof(new_permissions) - 1); // 사용자 입력
+                    noecho();
+
+                    // chmod 명령어 실행
+                    char command[MAX_PATH];
+                    snprintf(command, sizeof(command), "chmod %s %s", new_permissions, files[highlight].name);
+                    write(write_fd, command, strlen(command) + 1);
+
+                    // 결과 확인
+                    memset(response, 0, MAX_CMD_SIZE);
+                    read(read_fd, response, MAX_RESPONSE_SIZE);
+                    mvwprintw(info_win, 11, 1, "Permissions updated: %s", response);
+                    wrefresh(info_win);
+                } else {
+                    mvwprintw(info_win, 10, 1, "Cannot modify directory permissions.");
+                    wrefresh(info_win);
+                }
+            }
+                break;
+            case 'd': // Delete 키로 파일 삭제
+            {
+                // 삭제 확인 메시지
+                char confirm;
+                mvwprintw(info_win, 10, 1, "Delete %s? (y/n): ", files[highlight].name);
+                wrefresh(info_win);
+                confirm = wgetch(info_win);
+                if (confirm != 'y' && confirm != 'Y') {
+                    mvwprintw(info_win, 11, 1, "Deletion cancelled.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                // 삭제 명령 생성
+                char command[MAX_PATH];
+                if (files[highlight].permissions[0] == 'd')
+                    snprintf(command, sizeof(command), "rmdir %s", files[highlight].name);
+                else
+                    snprintf(command, sizeof(command), "rm %s", files[highlight].name);
+                write(write_fd, command, strlen(command) + 1);
+                memset(response, 0, MAX_CMD_SIZE);
+                read(read_fd, response, MAX_RESPONSE_SIZE);
+
+                if (strcmp(response, "s") == 0) {
+                    mvwprintw(info_win, 11, 1, "File deleted successfully.");
+                    free_file_list(files);
+                    highlight = 0;
+                } else {
+                    mvwprintw(info_win, 11, 1, "Failed to delete file: %s", response);
+                }
+
+                wrefresh(info_win);
+            }
+                break;
+            case 'r': // Rename 파일
+            {
+                char new_name[MAX_PATH];
+                echo(); // 사용자 입력 활성화
+                mvwprintw(info_win, 10, 1, "Enter new name for %s: ", files[highlight].name);
+                wrefresh(info_win);
+                wgetnstr(info_win, new_name, sizeof(new_name) - 1); // 사용자 입력 받기
+                noecho(); // 사용자 입력 비활성화
+
+                // 입력이 비어있는 경우 취소
+                if (strlen(new_name) == 0) {
+                    mvwprintw(info_win, 11, 1, "Rename cancelled.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                // rename 명령어 생성
+                char command[MAX_PATH];
+                snprintf(command, sizeof(command), "rename %s %s", files[highlight].name, new_name);
+                write(write_fd, command, strlen(command) + 1);
+
+                // 결과 확인
+                memset(response, 0, MAX_CMD_SIZE);
+                read(read_fd, response, MAX_RESPONSE_SIZE);
+
+                if (strcmp(response, "S") == 0) {
+                    mvwprintw(info_win, 11, 1, "Renamed successfully to: %s", new_name);
+
+                    // 파일 목록 갱신
+                    free_file_list(files);
+                    write(write_fd, "ls -al", 6); // 새 파일 목록 요청
+                    memset(response, 0, MAX_RESPONSE_SIZE);
+                    read(read_fd, response, MAX_RESPONSE_SIZE);
+                    parse_ls_output(response, &files, &file_count);
+
+                    highlight = 0; // 선택 항목 초기화
+                } else {
+                    mvwprintw(info_win, 11, 1, "Rename failed: %s", response);
+                }
+                wrefresh(info_win);
+            }
+                break;
+            case 'c': // Copy 파일
+            {
+                char command[MAX_PATH];
+                write(write_fd, "pwd", 4);
+                memset(response, 0, MAX_CMD_SIZE);
+                read(read_fd, response, MAX_RESPONSE_SIZE);
+                snprintf(copy_buffer, sizeof(copy_buffer), "%s/%s", response, files[highlight].name);
+                mvwprintw(info_win, 10, 1, "Copied: %s", copy_buffer);
+                wrefresh(info_win);
+            }
+                break;
+            case 'p': // Paste 파일
+            {
+                if (strlen(copy_buffer) == 0) { // 복사된 파일이 없는 경우
+                    mvwprintw(info_win, 10, 1, "No file to paste.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                // 새 파일 이름 입력받기
+                char new_name[MAX_PATH];
+                echo();
+                mvwprintw(info_win, 10, 1, "Enter new name: ", copy_buffer);
+                wrefresh(info_win);
+                wgetnstr(info_win, new_name, sizeof(new_name) - 1);
+                noecho();
+
+                if (strlen(new_name) == 0) { // 이름 입력이 비어있으면 복사 취소
+                    mvwprintw(info_win, 11, 1, "Paste cancelled.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                // 파일 복사 명령 생성
+                char command[MAX_PATH];
+                snprintf(command, sizeof(command), "cp %s %s", copy_buffer, new_name);
+                write(write_fd, command, strlen(command) + 1);
+                memset(response, 0, MAX_CMD_SIZE);
+                read(read_fd, response, MAX_RESPONSE_SIZE);
+
+                if (strcmp(response, "s") == 0) {
+                    mvwprintw(info_win, 11, 1, "Copied successfully to: %s", new_name);
+
+                    // 파일 목록 갱신
+                    free_file_list(files);
+                    write(write_fd, "ls -al", 6); // 새 파일 목록 요청
+                    memset(response, 0, MAX_RESPONSE_SIZE);
+                    read(read_fd, response, MAX_RESPONSE_SIZE);
+                    parse_ls_output(response, &files, &file_count);
+
+                    highlight = 0; // 선택 항목 초기화
+                } else {
+                    mvwprintw(info_win, 11, 1, "Copy failed: %s", response);
+                }
+                wrefresh(info_win);
+            }
+                break;
+            case 'n': // 새 디렉토리 생성
+            {
+                char dir_name[MAX_PATH];
+                echo(); // 사용자 입력 활성화
+                mvwprintw(info_win, 10, 1, "Enter new directory name: ");
+                wrefresh(info_win);
+                wgetnstr(info_win, dir_name, sizeof(dir_name) - 1); // 사용자 입력 받기
+                noecho(); // 사용자 입력 비활성화
+
+                // 입력이 비어있는 경우 취소
+                if (strlen(dir_name) == 0) {
+                    mvwprintw(info_win, 11, 1, "Directory creation cancelled.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                // 디렉토리 생성 명령 생성
+                char command[MAX_PATH];
+                snprintf(command, sizeof(command), "mkdir %s", dir_name);
+                write(write_fd, command, strlen(command) + 1);
+
+                // 결과 확인
+                memset(response, 0, MAX_CMD_SIZE);
+                read(read_fd, response, MAX_RESPONSE_SIZE);
+
+                if (strcmp(response, "SUCCESS") == 0) {
+                    mvwprintw(info_win, 11, 1, "Directory created successfully: %s", dir_name);
+
+                    // 파일 목록 갱신
+                    free_file_list(files);
+                    write(write_fd, "ls -al", 6); // 새 파일 목록 요청
+                    memset(response, 0, MAX_RESPONSE_SIZE);
+                    read(read_fd, response, MAX_RESPONSE_SIZE);
+                    parse_ls_output(response, &files, &file_count);
+
+                    highlight = 0; // 선택 항목 초기화
+                } else {
+                    mvwprintw(info_win, 11, 1, "Failed to create directory: %s", response);
+                }
+                wrefresh(info_win);
+            }
+                break;
+            case 'l': // 링크 대상 선택
+            {
+                char command[MAX_PATH];
+                write(write_fd, "pwd", 4);
+                memset(response, 0, MAX_CMD_SIZE);
+                read(read_fd, response, MAX_RESPONSE_SIZE);
+                snprintf(link_target, sizeof(link_target), "%s/%s", response, files[highlight].name);
+                mvwprintw(info_win, 10, 1, "Target: %s", link_target);
+                wrefresh(info_win);
+            }
+                break;
+            case 's': // 소프트 링크 생성
+            {
+                if (strlen(link_target) == 0) { // 링크 대상이 선택되지 않은 경우
+                    mvwprintw(info_win, 10, 1, "No link target selected. Use 'l' to select.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                char link_name[MAX_PATH];
+                echo();
+                mvwprintw(info_win, 10, 1, "Enter name for symbolic link to : ", link_target);
+                wrefresh(info_win);
+                wgetnstr(info_win, link_name, sizeof(link_name) - 1);
+                noecho();
+
+                if (strlen(link_name) == 0) {
+                    mvwprintw(info_win, 11, 1, "Symbolic link creation cancelled.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                char command[MAX_PATH];
+                snprintf(command, sizeof(command), "ln -s %s %s", link_target, link_name);
+                write(write_fd, command, strlen(command) + 1);
+                memset(response, 0, MAX_CMD_SIZE);
+                read(read_fd, response, MAX_RESPONSE_SIZE);
+
+                if (strcmp(response, "s") == 0) {
+                    mvwprintw(info_win, 11, 1, "Symbolic link created", link_name, link_target);
+                    free_file_list(files);
+                    write(write_fd, "ls -al", 6);
+                    memset(response, 0, MAX_RESPONSE_SIZE);
+                    read(read_fd, response, MAX_RESPONSE_SIZE);
+                    parse_ls_output(response, &files, &file_count);
+                    highlight = 0;
+                } else {
+                    mvwprintw(info_win, 11, 1, "Failed to create symbolic link", response);
+                }
+                wrefresh(info_win);
+            }
+                break;
+            case 'h': // 하드 링크 생성
+            {
+                if (strlen(link_target) == 0) { // 링크 대상이 선택되지 않은 경우
+                    mvwprintw(info_win, 10, 1, "No link target selected. Use 'l' to select.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                char link_name[MAX_PATH];
+                echo();
+                mvwprintw(info_win, 10, 1, "Enter name for hard link to: ", link_target);
+                wrefresh(info_win);
+                wgetnstr(info_win, link_name, sizeof(link_name) - 1);
+                noecho();
+
+                if (strlen(link_name) == 0) {
+                    mvwprintw(info_win, 11, 1, "Hard link creation cancelled.");
+                    wrefresh(info_win);
+                    break;
+                }
+
+                char command[MAX_PATH];
+                snprintf(command, sizeof(command), "ln %s %s", link_target, link_name);
+                write(write_fd, command, strlen(command) + 1);
+
+                memset(response, 0, MAX_CMD_SIZE);
+                read(read_fd, response, MAX_RESPONSE_SIZE);
+
+                if (strcmp(response, "s") == 0) {
+                    mvwprintw(info_win, 11, 1, "Hard link created", link_name, link_target);
+                    free_file_list(files);
+                    write(write_fd, "ls -al", 6);
+                    memset(response, 0, MAX_RESPONSE_SIZE);
+                    read(read_fd, response, MAX_RESPONSE_SIZE);
+                    parse_ls_output(response, &files, &file_count);
+                    highlight = 0;
+                } else {
+                    mvwprintw(info_win, 11, 1, "Failed to create hard link", response);
+                }
+                wrefresh(info_win);
+            }
+                break;
+            //case '+': 
+            //{ // 새 커맨드 추가
+            //    char new_command[MAX_CMD_SIZE];
+            //    echo();
+            //    mvwprintw(info_win, 10, 1, "Enter name for command : ");
+            //    wrefresh(info_win);
+            //    wgetnstr(info_win, new_command, sizeof(new_command) - 1);
+            //    noecho();
+            //    if (strlen(new_command) == 0) {
+            //        mvwprintw(info_win, 11, 1, "Adding command cancelled.");
+            //        wrefresh(info_win);
+            //        break;
+            //    }
+//
+            //    char command[MAX_PATH];
+            //    snprintf(command, sizeof(command), "add %s", new_command);
+            //    write(write_fd, command, strlen(command) + 1);
+            //    debug_log("%s", command);
+//
+            //    memset(response, 0, MAX_CMD_SIZE);
+            //    read(read_fd, response, MAX_RESPONSE_SIZE);
+            //}
+            //    break;
+            //case '-': 
+            //{ // 새 커맨드 추가
+            //    char new_command[MAX_CMD_SIZE];
+            //    echo();
+            //    mvwprintw(info_win, 10, 1, "Enter name for command : ");
+            //    wrefresh(info_win);
+            //    wgetnstr(info_win, new_command, sizeof(new_command) - 1);
+            //    noecho();
+            //    if (strlen(new_command) == 0) {
+            //        mvwprintw(info_win, 11, 1, "removing command cancelled.");
+            //        wrefresh(info_win);
+            //        break;
+            //    }
+//
+            //    char command[MAX_PATH];
+            //    snprintf(command, sizeof(command), "remove %s", new_command);
+            //    write(write_fd, command, strlen(command) + 1);
+//
+            //    memset(response, 0, MAX_CMD_SIZE);
+            //    read(read_fd, response, MAX_RESPONSE_SIZE);
+            //}
+            //    break;
             default:
                 break;
         }

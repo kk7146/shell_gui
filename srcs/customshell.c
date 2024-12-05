@@ -1,4 +1,5 @@
 #include "customshell.h"
+#include <stdarg.h>
 
 static int ensure_directory_exists() { // BASE_DIR이 존재하는지 확인하고 없으면 만듦
     struct stat st;
@@ -52,7 +53,7 @@ int execute_shell(char *command, cmd_node *const head, int read_fd, int write_fd
     signal(SIGINT, handle_sigint);
     while (1) {
         char *input_argv[MAX_ARG];
-        int  input_argc;
+        int  input_argc = 0;
         char *tok_str;
 
         node = head;
@@ -65,10 +66,42 @@ int execute_shell(char *command, cmd_node *const head, int read_fd, int write_fd
             continue;
         else if (strcmp(command, "help") == 0) {
             help(node);
-            write(write_fd, "s", 1);
+            write(write_fd, "s", 2);
         }
         else if (strcmp(command, "quit") == 0) {
             return 0;
+        }
+        //else if (strcmp(command, "add") == 0) {
+        //    tok_str = strtok(command, " \n");
+        //    while (tok_str != NULL) {
+        //        for (int j = 0; j < sizeof(list) / sizeof(list[0]); j++) {
+        //            if (strcmp(tok_str, list[j].name) == 0) {
+        //                add_command(head, list[j].name, list[j].cmd_func, list[j].usage_func);
+        //                break;
+        //            }
+        //        }
+        //        tok_str = strtok(NULL, " \n");
+        //    }
+        //    write(write_fd, "s", 2);
+        //}
+        //else if (strcmp(command, "remove") == 0) {
+        //    tok_str = strtok(command, " \n");
+        //    while (tok_str != NULL) {
+        //        for (int j = 0; j < sizeof(list) / sizeof(list[0]); j++) {
+        //            if (strcmp(tok_str, list[j].name) == 0) {
+        //                remove_command(head, list[j].name);
+        //                break;
+        //            }
+        //        }
+        //        tok_str = strtok(NULL, " \n");
+        //    }
+        //    write(write_fd, "s", 2);
+        //}
+        else if (strcmp(command, "pwd") == 0) {
+            char *current_dir;
+            current_dir = getcwd(NULL, 0);
+            write(write_fd, current_dir, strlen(current_dir) + 1);
+            free(current_dir);
         }
         else {
             input_argc_argv(&input_argc, input_argv, command);

@@ -55,3 +55,48 @@ e
 cd dir
 dir
 s
+cp /Users/eun/Desktop/Git/shell_gui/123345 test
+/private//1111
+/private//1111
+/private//1111
+/private//123345
+/private//123
+/private//dir
+/private//1233
+/private//..
+/private//1111
+/private/
+/private//1111
+/private/
+/private//123
+/private/tmp/test
+/private/tmp/test/1233
+/private/tmp/test
+/private/tmp/test/1233
+/private/tmp/test
+/private/tmp/test/1111
+cp /private/tmp/test/1111 copy
+e
+3
+1
+/private/tmp/test/private/tmp/test/1111
+/private/tmp/test/private/tmp/test/1111
+/private/tmp/test/private/tmp/test/1111
+
+
+
+s
+s
+e
+e
+e
+1
+1
+1
+1
+1
+
+e
+e
+ln -s /private/tmp/test/1111 1231231231
+add lsadd ls

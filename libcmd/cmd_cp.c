@@ -1,9 +1,10 @@
 #include "libcmd.h"
 
-static int cp_func(const char *source, const char *destination) {
+static int cp_func(const char *source, const char *destination,int write_fd) {
     FILE *src_file = fopen(source, "r");
     if (src_file == NULL) {
         perror("cp (source)");
+        write(write_fd, source, strlen(source) + 1);
         return -1;
     }
     FILE *dest_file = fopen(destination, "w");
@@ -30,24 +31,23 @@ int cmd_cp(int argc, char **argv, int write_fd) {
     src = resolve_path(argv[1]);
     printf("%s\n", src);
     if (check_null_pointer(src)) {
-        write(write_fd, "e", 1);
+        write(write_fd, "e", 2);
         return -1;
     }
     dest = resolve_path(argv[2]);
     if (check_null_pointer(dest)) {
         free(src);
-        write(write_fd, "e", 1);
+        write(write_fd, "e", 2);
         return -1;
     }
 
-    if (cp_func(src, dest) == -1)
+    if (cp_func(src, dest, write_fd) == -1)
     {
         free(src);
         free(dest);
-        write(write_fd, "e", 1);
         return -1;
     }
-    write(write_fd, "s", 1);
+    write(write_fd, "s", 2);
     free(src);
     free(dest);
     return 0;

@@ -106,7 +106,7 @@ int cmd_ls(int argc, char **argv, int write_fd) {
 
     // getopt를 사용하여 옵션 파싱
     argv[argc] = NULL;
-    optind = 1;
+    optind = 0;
     while ((opt = getopt(argc, argv, "altr")) != -1) {
         switch (opt) {
             case 'a':

@@ -14,7 +14,11 @@ char* resolve_path(const char *path) { // path를 받고 유효한 위치로 변
         perror("malloc failed");
         return NULL;
     }
-    printf("1\n");
+    if (strncmp(BASE_DIR, path, strlen(BASE_DIR)) == 0)
+    {
+        strcpy(resolved_path, path);
+        return resolved_path;
+    }
     if (path[0] == '/')
         snprintf(resolved_path, MAX_CMD_SIZE, "%s%s", BASE_DIR, path);
     else

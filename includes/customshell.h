@@ -1,7 +1,7 @@
 #ifndef CUSTOMSHELL_H
 # define CUSTOMSHELL_H
 
-#define MAX_ARG             (4)
+#define MAX_ARG             (20)
 
 # include "commandmanager.h"
 

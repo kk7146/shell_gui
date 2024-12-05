@@ -6,7 +6,7 @@
 #include <sys/types.h>  // pid_t
 #include <sys/wait.h>   // wait
 
-int main(int argc, char **argv) {
+int main() {
     int parent_to_child[2]; // 부모 -> 자식 파이프
     int child_to_parent[2]; // 자식 -> 부모 파이프
     pid_t pid;
@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
         close(parent_to_child[1]); // 부모 -> 자식 쓰기 닫기
         close(child_to_parent[0]); // 자식 -> 부모 읽기 닫기
 
-        server(parent_to_child[0], child_to_parent[1], argc, argv);
+        server(parent_to_child[0], child_to_parent[1]);
 
         close(parent_to_child[0]);
         close(child_to_parent[1]);

@@ -1,20 +1,5 @@
 #include "libcmd.h"
 
-// 파일 권한 출력 함수
-static void print_permissions(mode_t mode) {
-    printf((S_ISDIR(mode)) ? "d" : (S_ISLNK(mode)) ? "l" : (S_ISFIFO(mode)) ? "p" :
-           (S_ISCHR(mode)) ? "c" : (S_ISBLK(mode)) ? "b" : (S_ISSOCK(mode)) ? "s" : "-");
-    printf((mode & S_IRUSR) ? "r" : "-");
-    printf((mode & S_IWUSR) ? "w" : "-");
-    printf((mode & S_IXUSR) ? "x" : "-");
-    printf((mode & S_IRGRP) ? "r" : "-");
-    printf((mode & S_IWGRP) ? "w" : "-");
-    printf((mode & S_IXGRP) ? "x" : "-");
-    printf((mode & S_IROTH) ? "r" : "-");
-    printf((mode & S_IWOTH) ? "w" : "-");
-    printf((mode & S_IXOTH) ? "x" : "-");
-}
-
 // ln 명령어 함수
 int cmd_ln(int argc, char **argv, int write_fd) {
     int opt;
@@ -26,6 +11,8 @@ int cmd_ln(int argc, char **argv, int write_fd) {
     char *new_dest;
 
     // getopt를 사용하여 옵션 파싱
+    argv[argc] = NULL;
+    optind = 0;
     while ((opt = getopt(argc, argv, "sfvn")) != -1) {
         switch (opt) {
             case 's':
@@ -48,16 +35,19 @@ int cmd_ln(int argc, char **argv, int write_fd) {
     if (optind >= argc - 1) {
         printf("ln: missing original or new link argument\n");
         usage_ln();
+        write(write_fd, "e", 2);
         return -2;
     }
 
     new_src = resolve_path(argv[optind]);
     if (check_null_pointer(new_src)) {
+        write(write_fd, "e", 2);
         return -1;
     }
     new_dest = resolve_path(argv[optind + 1]);
     if (check_null_pointer(new_dest)) {
         free(new_src);
+        write(write_fd, "e", 2);
         return -1;
     }
 
@@ -67,6 +57,7 @@ int cmd_ln(int argc, char **argv, int write_fd) {
             perror("ln -f");
             free(new_src);
             free(new_dest);
+            write(write_fd, "e", 2);
             return -1;
         }
     }
@@ -77,6 +68,7 @@ int cmd_ln(int argc, char **argv, int write_fd) {
             perror("ln -s");
             free(new_src);
             free(new_dest);
+            write(write_fd, "e", 2);
             return -1;
         } else if (v_flag) {
             printf("Symbolic link created: %s -> %s\n", argv[optind + 1], argv[optind]);
@@ -86,6 +78,7 @@ int cmd_ln(int argc, char **argv, int write_fd) {
             perror("ln");
             free(new_src);
             free(new_dest);
+            write(write_fd, "e", 2);
             return -1;
         } else if (v_flag)
             printf("Hard link created: %s -> %s\n", argv[optind + 1], argv[optind]);
@@ -93,6 +86,7 @@ int cmd_ln(int argc, char **argv, int write_fd) {
 
     free(new_src);
     free(new_dest);
+    write(write_fd, "s", 2);
     return 0;
 }
 

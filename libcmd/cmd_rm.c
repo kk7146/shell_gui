@@ -83,7 +83,7 @@ int cmd_rm(int argc, char **argv, int write_fd) {
     int state = 0;
 
     // getopt를 사용하여 옵션 파싱
-    optind = 1;
+    optind = 0;
     while ((opt = getopt(argc, argv, "fidRrv")) != -1) {
         switch (opt) {
             case 'f':

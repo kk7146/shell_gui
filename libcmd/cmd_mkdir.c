@@ -46,6 +46,7 @@ int cmd_mkdir(int argc, char **argv, int write_fd) {
     mode_t mode = 0777;  // 권한
     int state = 0;
 
+    optind = 0;
     while ((opt = getopt(argc, argv, "pvm:")) != -1) {
         switch (opt) {
             case 'p':
@@ -67,6 +68,10 @@ int cmd_mkdir(int argc, char **argv, int write_fd) {
         if (mkdir_func(argc, argv, p_flag, v_flag, mode, i) == -1)
             state = -1;
     }
+    if (state == -1)
+        write(write_fd, "e", 2);
+    else 
+        write(write_fd, "s", 2);
     return state;
 }
 
