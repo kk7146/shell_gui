@@ -39,13 +39,13 @@ static void debug_log(const char *format, ...) {
 }
 
 void draw_menu(WINDOW *win, FileInfo *files, int file_count, int highlight, char *cur_path) {
-    mvwprintw(win, 0, 1, cur_path + strlen(BASE_DIR));
+    mvwprintw(win, 1, 1, cur_path + strlen(BASE_DIR));
     for (int i = 0; i < file_count; i++) {
         // 강조된 항목 처리
         if (i == highlight)
             wattron(win, A_REVERSE);
         // 파일 이름
-        mvwprintw(win, i + 1, 1, "%s", files[i].name);
+        mvwprintw(win, i + 2, 1, "%s", files[i].name);
         if (i == highlight)
             wattroff(win, A_REVERSE);
     }
@@ -156,7 +156,7 @@ int client(int read_fd, int write_fd) {
     write(write_fd, "pwd", 4);
     memset(response, 0, sizeof(response));
     read(read_fd, response, sizeof(response));
-    mvwprintw(menu_win, 0, 1, response + strlen(BASE_DIR));
+    mvwprintw(menu_win, 1, 1, response + strlen(BASE_DIR));
     wrefresh(menu_win);
 
     // 정보 창 생성
