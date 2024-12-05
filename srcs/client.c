@@ -27,7 +27,7 @@ typedef struct {
 } FileInfo;
 
 static void debug_log(const char *format, ...) {
-    FILE *log_file = fopen("debug.log", "a"); // 디버깅 로그 파일 열기
+    FILE *log_file = fopen("command.log", "a"); // 디버깅 로그 파일 열기
     if (!log_file) return;
 
     va_list args;
@@ -39,7 +39,7 @@ static void debug_log(const char *format, ...) {
 }
 
 void draw_menu(WINDOW *win, FileInfo *files, int file_count, int highlight, char *cur_path) {
-    mvwprintw(win, 1, 1, "~/");
+    mvwprintw(win, 1, 1, "~");
     mvwprintw(win, 1, 3, cur_path + strlen(BASE_DIR));
     for (int i = 0; i < file_count; i++) {
         // 강조된 항목 처리
@@ -216,6 +216,7 @@ int client(int read_fd, int write_fd) {
                 if (files[highlight].permissions[0]=='d') {
                     char command[MAX_PATH];
                     snprintf(command, sizeof(command), "cd %s", files[highlight].name);
+                    debug_log("%s\n", command);
                     write(write_fd, command, strlen(command) + 1);
                     memset(response, 0, MAX_CMD_SIZE);
                     read(read_fd, response, MAX_RESPONSE_SIZE);
@@ -237,6 +238,7 @@ int client(int read_fd, int write_fd) {
                     // chmod 명령어 실행
                     char command[MAX_PATH];
                     snprintf(command, sizeof(command), "chmod %s %s", new_permissions, files[highlight].name);
+                    debug_log("%s\n", command);
                     write(write_fd, command, strlen(command) + 1);
 
                     // 결과 확인
@@ -269,6 +271,7 @@ int client(int read_fd, int write_fd) {
                     snprintf(command, sizeof(command), "rmdir %s", files[highlight].name);
                 else
                     snprintf(command, sizeof(command), "rm %s", files[highlight].name);
+                debug_log("%s\n", command);
                 write(write_fd, command, strlen(command) + 1);
                 memset(response, 0, MAX_CMD_SIZE);
                 read(read_fd, response, MAX_RESPONSE_SIZE);
@@ -303,6 +306,7 @@ int client(int read_fd, int write_fd) {
                 // rename 명령어 생성
                 char command[MAX_PATH];
                 snprintf(command, sizeof(command), "rename %s %s", files[highlight].name, new_name);
+                debug_log("%s\n", command);
                 write(write_fd, command, strlen(command) + 1);
 
                 // 결과 확인
@@ -362,6 +366,7 @@ int client(int read_fd, int write_fd) {
                 // 파일 복사 명령 생성
                 char command[MAX_PATH];
                 snprintf(command, sizeof(command), "cp %s %s", copy_buffer, new_name);
+                debug_log("%s\n", command);
                 write(write_fd, command, strlen(command) + 1);
                 memset(response, 0, MAX_CMD_SIZE);
                 read(read_fd, response, MAX_RESPONSE_SIZE);
@@ -402,6 +407,7 @@ int client(int read_fd, int write_fd) {
                 // 디렉토리 생성 명령 생성
                 char command[MAX_PATH];
                 snprintf(command, sizeof(command), "mkdir %s", dir_name);
+                debug_log("%s\n", command);
                 write(write_fd, command, strlen(command) + 1);
 
                 // 결과 확인
@@ -459,6 +465,7 @@ int client(int read_fd, int write_fd) {
 
                 char command[MAX_PATH];
                 snprintf(command, sizeof(command), "ln -s %s %s", link_target, link_name);
+                debug_log("%s\n", command);
                 write(write_fd, command, strlen(command) + 1);
                 memset(response, 0, MAX_CMD_SIZE);
                 read(read_fd, response, MAX_RESPONSE_SIZE);
@@ -500,6 +507,7 @@ int client(int read_fd, int write_fd) {
 
                 char command[MAX_PATH];
                 snprintf(command, sizeof(command), "ln %s %s", link_target, link_name);
+                debug_log("%s\n", command);
                 write(write_fd, command, strlen(command) + 1);
 
                 memset(response, 0, MAX_CMD_SIZE);

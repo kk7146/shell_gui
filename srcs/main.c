@@ -1,10 +1,10 @@
 #include "server.h"
 #include "client.h"
-#include <stdio.h>      // perror
-#include <stdlib.h>     // exit
-#include <unistd.h>     // fork, pipe, close
-#include <sys/types.h>  // pid_t
-#include <sys/wait.h>   // wait
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 int main() {
     int parent_to_child[2]; // 부모 -> 자식 파이프
@@ -20,7 +20,7 @@ int main() {
         perror("fork");
         return -1;
     }
-    if (pid == 0) { // 자식 프로세스: 명령어 처리 (서버 역할)
+    if (pid == 0) { // 자식 프로세스: 명령어 처리 서버
         close(parent_to_child[1]); // 부모 -> 자식 쓰기 닫기
         close(child_to_parent[0]); // 자식 -> 부모 읽기 닫기
 
@@ -34,9 +34,9 @@ int main() {
         close(child_to_parent[1]); // 자식 -> 부모 쓰기 닫기
 
         client(child_to_parent[0], parent_to_child[1]);
-        // 리소스 정리
+
         close(parent_to_child[1]);
         close(child_to_parent[0]);
-        wait(NULL); // 자식 프로세스 종료 대기
+        wait(NULL);
     }
 }
