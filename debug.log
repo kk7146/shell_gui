@@ -99,4 +99,4 @@ e
 e
 e
 ln -s /private/tmp/test/1111 1231231231
-add lsadd ls
+add lsadd ls/private/tmp/test

@@ -39,7 +39,8 @@ static void debug_log(const char *format, ...) {
 }
 
 void draw_menu(WINDOW *win, FileInfo *files, int file_count, int highlight, char *cur_path) {
-    mvwprintw(win, 1, 1, cur_path + strlen(BASE_DIR));
+    mvwprintw(win, 1, 1, "~/");
+    mvwprintw(win, 1, 3, cur_path + strlen(BASE_DIR));
     for (int i = 0; i < file_count; i++) {
         // 강조된 항목 처리
         if (i == highlight)
