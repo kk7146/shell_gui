@@ -3,7 +3,7 @@
 
 # define MAX_DIR_SIZE	(128)
 # define MAX_CMD_SIZE	(128)
-# define BASE_DIR		"/private/tmp/test"
+# define BASE_DIR		"/tmp/test"
 
 # include <stdio.h> 
 # include <stdlib.h>
