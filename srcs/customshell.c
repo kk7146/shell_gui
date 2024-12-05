@@ -65,9 +65,7 @@ int execute_shell(char *command, cmd_node *const head, int read_fd, int write_fd
             continue;
         else if (strcmp(command, "help") == 0) {
             help(node);
-            char response[2];
-            response[0] = 'a';
-            write(write_fd, response, strlen(response) + 1);
+            write(write_fd, "s", 1);
         }
         else if (strcmp(command, "quit") == 0) {
             return 0;

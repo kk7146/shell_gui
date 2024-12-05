@@ -29,13 +29,11 @@ char* resolve_path(const char *path) { // path를 받고 유효한 위치로 변
         snprintf(resolved_path, MAX_DIR_SIZE, "%s/%s", cwd, path);
         free(cwd);  // getcwd에서 할당된 메모리 해제
     }
-    printf("1.%s\n", resolved_path);
     if (!validate_path(resolved_path))
     {
         free(resolved_path);
         return NULL;
     }
-    printf("2.%s\n", resolved_path);
     return resolved_path;
 }
 

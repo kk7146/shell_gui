@@ -83,6 +83,7 @@ int cmd_rm(int argc, char **argv, int write_fd) {
     int state = 0;
 
     // getopt를 사용하여 옵션 파싱
+    optind = 1;
     while ((opt = getopt(argc, argv, "fidRrv")) != -1) {
         switch (opt) {
             case 'f':
@@ -119,6 +120,10 @@ int cmd_rm(int argc, char **argv, int write_fd) {
         state = rm_func(argv[i], f_flag, i_flag, r_flag, v_flag);
         free(file_name);
     }
+    if (state == 0)
+        write(write_fd, "s", 1);
+    else
+        write(write_fd, "e", 1);
     return state;
 }
 

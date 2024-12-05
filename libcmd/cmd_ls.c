@@ -55,10 +55,8 @@ static int ls_func(int a_flag, int l_flag, int s_flag, int r_flag, int write_fd)
                 strftime(timebuf, sizeof(timebuf), "%b %d %H:%M", localtime(&statbuf.st_mtime)) ? timebuf : "?",
                 entry->d_name
             );
-        } else {
-            printf("11");
+        } else
             snprintf(temp_buffer, sizeof(temp_buffer), "%s", entry->d_name);
-        }
 
         // 심볼릭 링크 대상 처리
         if (S_ISLNK(statbuf.st_mode)) {
@@ -127,7 +125,6 @@ int cmd_ls(int argc, char **argv, int write_fd) {
                 usage_ls();
         }
     }
-    printf("\n%d %d %d %d\n", a_flag, l_flag, s_flag, r_flag);
     return ls_func(a_flag, l_flag, s_flag, r_flag, write_fd);
 }
 

@@ -26,7 +26,7 @@ $(LIBCMD):
 	make -C $(LIB_DIR) all
 
 $(NAME): $(OBJS) $(LIBCMD)
-	$(CC) -o $(NAME) $(OBJS) -L$(LIB_DIR) -lcmd
+	$(CC) -o $(NAME) $(OBJS) -L$(LIB_DIR) -lcmd -lncurses
 
 clean:
 	rm -f $(OBJS) ./srcs/$(NAME)
