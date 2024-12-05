@@ -11,6 +11,7 @@
 #define MAX_PATH 1024
 #define MAX_RESPONSE_SIZE 8192
 #define MAX_CMD_SIZE 128
+# define BASE_DIR		"/tmp/test"
 
 // 파일 정보를 저장할 구조체
 typedef struct {
@@ -37,7 +38,8 @@ static void debug_log(const char *format, ...) {
     fclose(log_file); // 파일 닫기
 }
 
-void draw_menu(WINDOW *win, FileInfo *files, int file_count, int highlight) {
+void draw_menu(WINDOW *win, FileInfo *files, int file_count, int highlight, char *cur_path) {
+    mvwprintw(win, 0, 1, cur_path + strlen(BASE_DIR));
     for (int i = 0; i < file_count; i++) {
         // 강조된 항목 처리
         if (i == highlight)
@@ -151,7 +153,10 @@ int client(int read_fd, int write_fd) {
     // 메뉴 창 생성
     WINDOW *menu_win = newwin(height, menu_width, 1, 0);
     box(menu_win, 0, 0);
-    mvwprintw(menu_win, 0, 1, " File List ");
+    write(write_fd, "pwd", 4);
+    memset(response, 0, sizeof(response));
+    read(read_fd, response, sizeof(response));
+    mvwprintw(menu_win, 0, 1, response + strlen(BASE_DIR));
     wrefresh(menu_win);
 
     // 정보 창 생성
@@ -183,7 +188,10 @@ int client(int read_fd, int write_fd) {
         // 응답을 파일 목록으로 파싱
         parse_ls_output(response, &files, &file_count);
         wclear(menu_win);
-        draw_menu(menu_win, files, file_count, highlight);
+        write(write_fd, "pwd", 4);
+        memset(response, 0, sizeof(response));
+        read(read_fd, response, sizeof(response));
+        draw_menu(menu_win, files, file_count, highlight, response);
         draw_info(info_win, files, file_count, highlight);
         ch = wgetch(menu_win);
 
